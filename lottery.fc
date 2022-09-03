@@ -114,16 +114,17 @@ var get_orders() method_id {
 
 () recv_internal(int order_amount, cell in_msg_cell, slice in_msg) impure {
     randomize_lt();
+    var cs = in_msg_cell.begin_parse();
+    int flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+
+    if (flags & 1) { ;; ignore bounced
+        return ();
+    }
+
     slice src_addr_slice = cs~load_msg_addr();
     (int src_wc, int src_addr) = parse_std_addr(src_addr_slice);
     (int stored_seqno, int pubkey, int order_seqno, int number_of_wins, int incoming_amount, int outgoing_amount, int owner_wc, int owner_account_id, cell orders) = unpack_state();
     orders = remove_old_orders(orders, order_seqno);
-    var cs = in_msg_cell.begin_parse();
-    int flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
- 
-    if (flags & 1) { ;; ignore bounced
-        return ();
-    }
     
     if (order_amount >= 1000000000000) {
     builder order = pack_order(order_seqno, 1, now(), order_amount, src_wc, src_addr);
@@ -152,7 +153,7 @@ var get_orders() method_id {
         }
         return ();
     }
-    
+
     send_grams(src_wc, src_addr, 2 * order_amount);
     builder order = pack_order(order_seqno, 2, now(), order_amount, src_wc, src_addr);
     orders~udict_set_builder(32, order_seqno, order);
